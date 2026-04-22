@@ -1,0 +1,107 @@
+{
+  "_comment": "Tefnut S3 IAM Policy — Application Role (tefnut-app-role)",
+  "_description": "Scoped to tefnut-data bucket. The application role can only access objects under the org_id prefix it sets via session tags. Direct bucket listing is denied.",
+
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowTenantScopedObjectAccess",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:GetObjectAttributes",
+        "s3:GetObjectTagging"
+      ],
+      "Resource": "arn:aws:s3:::tefnut-data/${aws:PrincipalTag/org_id}/*",
+      "_comment": "aws:PrincipalTag/org_id is set via STS AssumeRole session tags — enforces prefix isolation at IAM level"
+    },
+    {
+      "Sid": "AllowPresignedUrlGeneration",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": "arn:aws:s3:::tefnut-data/${aws:PrincipalTag/org_id}/*",
+      "Condition": {
+        "StringEquals": {
+          "s3:prefix": "${aws:PrincipalTag/org_id}/"
+        }
+      }
+    },
+    {
+      "Sid": "AllowHeadObjectForIntegrityCheck",
+      "Effect": "Allow",
+      "Action": ["s3:HeadObject"],
+      "Resource": "arn:aws:s3:::tefnut-data/${aws:PrincipalTag/org_id}/*"
+    },
+    {
+      "Sid": "DenyListBucketWithoutPrefix",
+      "Effect": "Deny",
+      "Action": ["s3:ListBucket"],
+      "Resource": "arn:aws:s3:::tefnut-data",
+      "Condition": {
+        "StringNotLike": {
+          "s3:prefix": ["${aws:PrincipalTag/org_id}/*", "${aws:PrincipalTag/org_id}/"]
+        }
+      }
+    },
+    {
+      "Sid": "AllowListOwnPrefix",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
+      "Resource": "arn:aws:s3:::tefnut-data",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": "${aws:PrincipalTag/org_id}/*"
+        }
+      }
+    },
+    {
+      "Sid": "DenyDeleteReports",
+      "Effect": "Deny",
+      "Action": ["s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::tefnut-data/*/reports/*",
+      "_comment": "ISO reports are immutable — deletion is blocked at IAM level as a second layer of defence"
+    },
+    {
+      "Sid": "RequireKMSEncryption",
+      "Effect": "Deny",
+      "Action": ["s3:PutObject"],
+      "Resource": "arn:aws:s3:::tefnut-data/*",
+      "Condition": {
+        "StringNotEquals": {
+          "s3:x-amz-server-side-encryption": "aws:kms"
+        }
+      },
+      "_comment": "Rejects any PUT that does not specify SSE-KMS — enforces encryption at rest"
+    },
+    {
+      "Sid": "RequireSpecificKMSKey",
+      "Effect": "Deny",
+      "Action": ["s3:PutObject"],
+      "Resource": "arn:aws:s3:::tefnut-data/*",
+      "Condition": {
+        "StringNotEquals": {
+          "s3:x-amz-server-side-encryption-aws-kms-key-id": "REPLACE_WITH_KMS_KEY_ARN"
+        }
+      }
+    },
+    {
+      "Sid": "DenyNonTLSRequests",
+      "Effect": "Deny",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::tefnut-data",
+        "arn:aws:s3:::tefnut-data/*"
+      ],
+      "Condition": {
+        "Bool": {
+          "aws:SecureTransport": "false"
+        }
+      }
+    }
+  ]
+}

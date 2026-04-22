@@ -12,69 +12,141 @@ export interface NavItem {
   to: string;
   icon: LucideIcon;
   badge?: string;
+  /** ISO standard label shown as a small chip on the nav item */
+  isoLabel?: string;
+  /** Visual accent: "carbon" = green, "water" = blue */
+  accent?: "carbon" | "water";
+}
+
+export interface NavSection {
+  label: string;
+  items: NavItem[];
 }
 
 interface PortalShellProps {
-  nav: NavItem[];
+  /** Flat list (legacy) or sectioned nav */
+  nav: NavItem[] | NavSection[];
   portalLabel: string;
   user: { name: string; role: string; initials: string };
   children: ReactNode;
 }
 
+function isSectioned(nav: NavItem[] | NavSection[]): nav is NavSection[] {
+  return nav.length > 0 && "items" in nav[0];
+}
+
+function NavLink({ item, active }: { item: NavItem; active: boolean }) {
+  const Icon = item.icon;
+  return (
+    <Link
+      to={item.to}
+      className={cn(
+        "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
+        active
+          ? "bg-sidebar-accent text-sidebar-primary shadow-soft"
+          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+      )}
+    >
+      <Icon className={cn(
+        "h-4 w-4 shrink-0",
+        item.accent === "carbon" && active && "text-success",
+        item.accent === "water" && active && "text-info",
+      )} />
+      <span className="flex-1 truncate">{item.label}</span>
+      {item.isoLabel && (
+        <span className={cn(
+          "rounded px-1.5 py-0.5 text-[9px] font-semibold tracking-wide",
+          item.accent === "water"
+            ? "bg-info/20 text-info"
+            : item.accent === "carbon"
+            ? "bg-success/20 text-success"
+            : "bg-sidebar-primary/20 text-sidebar-primary",
+        )}>
+          {item.isoLabel}
+        </span>
+      )}
+      {item.badge && !item.isoLabel && (
+        <span className="rounded-full bg-sidebar-primary px-2 py-0.5 text-[10px] font-semibold text-sidebar-primary-foreground">
+          {item.badge}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 export function PortalShell({ nav, portalLabel, user, children }: PortalShellProps) {
   const location = useLocation();
+
+  const isActive = (to: string) =>
+    to === "/app" ? location.pathname === to : location.pathname.startsWith(to);
+
+  const renderNav = () => {
+    if (isSectioned(nav)) {
+      return nav.map((section) => (
+        <div key={section.label} className="mb-4">
+          <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+            {section.label}
+          </p>
+          <div className="space-y-0.5">
+            {section.items.map((item) => (
+              <NavLink key={item.to} item={item} active={isActive(item.to)} />
+            ))}
+          </div>
+        </div>
+      ));
+    }
+    return (
+      <div className="space-y-0.5">
+        {(nav as NavItem[]).map((item) => (
+          <NavLink key={item.to} item={item} active={isActive(item.to)} />
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
-        <div className="flex h-16 items-center px-6">
+        {/* Logo */}
+        <div className="flex h-16 items-center gap-3 px-5">
           <TefnutLogo variant="light" />
         </div>
+
+        {/* Portal label */}
         <div className="px-4 pb-3">
-          <Badge className="bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent border-0">
+          <Badge className="bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent border-0 text-[10px]">
             {portalLabel}
           </Badge>
         </div>
-        <nav className="flex-1 space-y-1 px-3 py-2">
-          {nav.map((item) => {
-            const active =
-              item.to === "/"
-                ? location.pathname === item.to
-                : location.pathname.startsWith(item.to);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={cn(
-                  "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
-                  active
-                    ? "bg-sidebar-accent text-sidebar-primary shadow-soft"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                <span className="flex-1">{item.label}</span>
-                {item.badge && (
-                  <span className="rounded-full bg-sidebar-primary px-2 py-0.5 text-[10px] font-semibold text-sidebar-primary-foreground">
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto px-3 py-2">
+          {renderNav()}
         </nav>
-        <div className="border-t border-sidebar-border p-4">
+
+        {/* ISO Standards footer chip */}
+        <div className="border-t border-sidebar-border px-4 py-3">
+          <div className="mb-3 flex items-center gap-1.5">
+            <span className="rounded px-1.5 py-0.5 text-[9px] font-bold tracking-wide bg-success/20 text-success">
+              ISO 14064
+            </span>
+            <span className="text-sidebar-foreground/30 text-[10px]">+</span>
+            <span className="rounded px-1.5 py-0.5 text-[9px] font-bold tracking-wide bg-info/20 text-info">
+              ISO 14046
+            </span>
+            <span className="ml-auto text-[9px] text-sidebar-foreground/40">GCCA v3.1</span>
+          </div>
+          {/* User */}
           <div className="flex items-center gap-3">
-            <Avatar className="h-9 w-9 ring-2 ring-sidebar-primary/30">
-              <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs font-semibold">
+            <Avatar className="h-8 w-8 ring-2 ring-sidebar-primary/30">
+              <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-[10px] font-semibold">
                 {user.initials}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-sidebar-foreground">{user.name}</p>
-              <p className="truncate text-xs text-sidebar-foreground/60">{user.role}</p>
+              <p className="truncate text-[10px] text-sidebar-foreground/60">{user.role}</p>
             </div>
           </div>
         </div>

@@ -17,6 +17,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AppSitesRouteImport } from './routes/app.sites'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppReportsRouteImport } from './routes/app.reports'
+import { Route as AppHistoryRouteImport } from './routes/app.history'
 import { Route as AppEmissionsRouteImport } from './routes/app.emissions'
 import { Route as AppDataRouteImport } from './routes/app.data'
 import { Route as AdminSecurityRouteImport } from './routes/admin.security'
@@ -63,6 +64,11 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
 const AppReportsRoute = AppReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppHistoryRoute = AppHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
   getParentRoute: () => AppRoute,
 } as any)
 const AppEmissionsRoute = AppEmissionsRouteImport.update({
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/admin/security': typeof AdminSecurityRoute
   '/app/data': typeof AppDataRoute
   '/app/emissions': typeof AppEmissionsRoute
+  '/app/history': typeof AppHistoryRoute
   '/app/reports': typeof AppReportsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/sites': typeof AppSitesRoute
@@ -127,6 +134,7 @@ export interface FileRoutesByTo {
   '/admin/security': typeof AdminSecurityRoute
   '/app/data': typeof AppDataRoute
   '/app/emissions': typeof AppEmissionsRoute
+  '/app/history': typeof AppHistoryRoute
   '/app/reports': typeof AppReportsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/sites': typeof AppSitesRoute
@@ -145,6 +153,7 @@ export interface FileRoutesById {
   '/admin/security': typeof AdminSecurityRoute
   '/app/data': typeof AppDataRoute
   '/app/emissions': typeof AppEmissionsRoute
+  '/app/history': typeof AppHistoryRoute
   '/app/reports': typeof AppReportsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/sites': typeof AppSitesRoute
@@ -164,6 +173,7 @@ export interface FileRouteTypes {
     | '/admin/security'
     | '/app/data'
     | '/app/emissions'
+    | '/app/history'
     | '/app/reports'
     | '/app/settings'
     | '/app/sites'
@@ -179,6 +189,7 @@ export interface FileRouteTypes {
     | '/admin/security'
     | '/app/data'
     | '/app/emissions'
+    | '/app/history'
     | '/app/reports'
     | '/app/settings'
     | '/app/sites'
@@ -196,6 +207,7 @@ export interface FileRouteTypes {
     | '/admin/security'
     | '/app/data'
     | '/app/emissions'
+    | '/app/history'
     | '/app/reports'
     | '/app/settings'
     | '/app/sites'
@@ -265,6 +277,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/app/reports'
       preLoaderRoute: typeof AppReportsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/history': {
+      id: '/app/history'
+      path: '/history'
+      fullPath: '/app/history'
+      preLoaderRoute: typeof AppHistoryRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/emissions': {
@@ -342,6 +361,7 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 interface AppRouteChildren {
   AppDataRoute: typeof AppDataRoute
   AppEmissionsRoute: typeof AppEmissionsRoute
+  AppHistoryRoute: typeof AppHistoryRoute
   AppReportsRoute: typeof AppReportsRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppSitesRoute: typeof AppSitesRoute
@@ -351,6 +371,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppDataRoute: AppDataRoute,
   AppEmissionsRoute: AppEmissionsRoute,
+  AppHistoryRoute: AppHistoryRoute,
   AppReportsRoute: AppReportsRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppSitesRoute: AppSitesRoute,
@@ -367,3 +388,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

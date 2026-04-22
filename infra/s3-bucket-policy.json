@@ -1,0 +1,53 @@
+{
+  "_comment": "Tefnut S3 Bucket Policy — tefnut-data bucket",
+  "_description": "Applied directly to the bucket. Blocks all public access and enforces SSE-KMS + TLS.",
+
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyPublicAccess",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::tefnut-data",
+        "arn:aws:s3:::tefnut-data/*"
+      ],
+      "Condition": {
+        "Bool": {
+          "aws:SecureTransport": "false"
+        }
+      }
+    },
+    {
+      "Sid": "DenyUnencryptedObjectUploads",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::tefnut-data/*",
+      "Condition": {
+        "StringNotEquals": {
+          "s3:x-amz-server-side-encryption": "aws:kms"
+        }
+      }
+    },
+    {
+      "Sid": "AllowOnlyTefnutAppRole",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::REPLACE_WITH_ACCOUNT_ID:role/tefnut-app-role"
+      },
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:HeadObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::tefnut-data",
+        "arn:aws:s3:::tefnut-data/*"
+      ]
+    }
+  ]
+}

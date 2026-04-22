@@ -1,10 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Bell, Building2, Globe, Lock, Save, User } from "lucide-react";
+import { Bell, Building2, Globe, Lock, Save, ShieldCheck, User } from "lucide-react";
+import { useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/settings")({
   head: () => ({ meta: [{ title: "Settings — Tefnut" }] }),
@@ -126,6 +129,119 @@ function SettingsPage() {
             </div>
           </div>
         </Section>
+
+        <StandardsSelector />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Standards Selector
+// ---------------------------------------------------------------------------
+const STANDARDS = [
+  {
+    id: "iso-14064",
+    name: "ISO 14064-1:2018",
+    description: "GHG Inventory — Carbon Footprint",
+    detail: "Quantification and reporting of GHG emissions at the organizational level. Used by the Carbon Engine.",
+    accent: "success" as const,
+    defaultOn: true,
+  },
+  {
+    id: "iso-14046",
+    name: "ISO 14046:2014",
+    description: "Water Footprint Assessment",
+    detail: "Principles, requirements and guidelines for water footprint of products, processes and organizations. Used by the Water Engine.",
+    accent: "info" as const,
+    defaultOn: true,
+  },
+  {
+    id: "gcca-carbon",
+    name: "GCCA CO₂ Protocol v3.1",
+    description: "Cement & Energy Protocol",
+    detail: "GCCA Cement CO₂ and Energy Protocol — the industry-specific quantification methodology underpinning the Carbon Engine.",
+    accent: "success" as const,
+    defaultOn: true,
+  },
+  {
+    id: "gcca-water",
+    name: "GCCA Water Guidelines 2021",
+    description: "Water Management for Cement",
+    detail: "GCCA Water Management Guidelines for the Cement Industry — defines KPI 1 (Consumption) and KPI 2 (Intensity) used by the Water Engine.",
+    accent: "info" as const,
+    defaultOn: true,
+  },
+  {
+    id: "eu-cbam",
+    name: "EU CBAM Regulation 2023/956",
+    description: "Carbon Border Adjustment Mechanism",
+    detail: "EU regulation requiring embedded carbon reporting for cement imports. Drives the CBAM Reports module.",
+    accent: "brand" as const,
+    defaultOn: true,
+  },
+  {
+    id: "ipcc-ar6",
+    name: "IPCC AR6 GWP Values",
+    description: "Global Warming Potentials",
+    detail: "GWP100 values from the IPCC Sixth Assessment Report (2021), as required by ISO 14064-1:2018.",
+    accent: "brand" as const,
+    defaultOn: true,
+  },
+];
+
+const accentClasses: Record<string, { badge: string; dot: string }> = {
+  success: { badge: "bg-success/10 text-success border-success/30", dot: "bg-success" },
+  info: { badge: "bg-info/10 text-info border-info/30", dot: "bg-info" },
+  brand: { badge: "bg-brand-muted text-brand border-brand/20", dot: "bg-brand" },
+};
+
+function StandardsSelector() {
+  const [enabled, setEnabled] = useState<Record<string, boolean>>(
+    Object.fromEntries(STANDARDS.map((s) => [s.id, s.defaultOn])),
+  );
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+      <div className="flex items-center gap-3 border-b border-border pb-4">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-muted text-brand">
+          <ShieldCheck className="h-4 w-4" />
+        </div>
+        <div>
+          <h3 className="font-semibold tracking-tight">Standards & Frameworks</h3>
+          <p className="text-sm text-muted-foreground">
+            Tefnut is built on these ISO and GCCA frameworks. Toggle visibility in reports.
+          </p>
+        </div>
+      </div>
+      <div className="mt-5 space-y-3">
+        {STANDARDS.map((s) => {
+          const cfg = accentClasses[s.accent];
+          return (
+            <div
+              key={s.id}
+              className={cn(
+                "flex items-start gap-4 rounded-xl border p-4 transition-colors",
+                enabled[s.id] ? "border-border bg-background" : "border-border/50 bg-muted/20 opacity-60",
+              )}
+            >
+              <span className={cn("mt-1 h-2 w-2 shrink-0 rounded-full", cfg.dot)} />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold">{s.name}</p>
+                  <Badge variant="outline" className={cn("text-[10px]", cfg.badge)}>
+                    {s.description}
+                  </Badge>
+                </div>
+                <p className="mt-0.5 text-xs text-muted-foreground">{s.detail}</p>
+              </div>
+              <Switch
+                checked={enabled[s.id]}
+                onCheckedChange={(v) => setEnabled((prev) => ({ ...prev, [s.id]: v }))}
+              />
+            </div>
+          );
+        })}
       </div>
     </div>
   );

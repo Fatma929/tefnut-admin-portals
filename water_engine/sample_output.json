@@ -1,0 +1,143 @@
+{
+  "total_water_withdrawal_m3": 550000.0,
+  "total_water_discharge_m3": 100000.0,
+  "total_water_consumption_m3": 450000.0,
+  "total_freshwater_consumption_m3": 450000.0,
+  "water_consumption_per_tonne_litres": 195.65217391304347,
+  "quarry_water_not_used_m3": 0.0,
+  "recycled_water_m3": 0.0,
+  "storm_water_collected_discharged_m3": 0.0,
+  "harvested_rainwater_withdrawal_m3": 0.0,
+  "warnings": [],
+  "audit_trail": {
+    "source_reference": {
+      "source_filename": "reference_plant.json",
+      "upload_timestamp_utc": "2026-01-15T10:30:00Z",
+      "input_hash": "26f59380c4cddd7dbf80538aaad93f3ed34538a3d22db9e4f17d2b5f1379e314"
+    },
+    "user_id": "anonymous"
+  },
+  "methodology": {
+    "protocol_name": "GCCA Water",
+    "protocol_version": "0.1"
+  },
+  "steps_breakdown": [
+    {
+      "step_id": "total_withdrawal",
+      "label": "Total Water Withdrawal",
+      "formula": "surface_water + groundwater + quarry_water_used + municipal_potable_water + external_wastewater + harvested_rainwater",
+      "inputs": {
+        "surface_water": {
+          "value": 500000.0,
+          "unit": "m³/yr"
+        },
+        "groundwater": {
+          "value": 0.0,
+          "unit": "m³/yr"
+        },
+        "quarry_water_used": {
+          "value": 0.0,
+          "unit": "m³/yr"
+        },
+        "municipal_potable_water": {
+          "value": 50000.0,
+          "unit": "m³/yr"
+        },
+        "external_wastewater": {
+          "value": 0.0,
+          "unit": "m³/yr"
+        },
+        "harvested_rainwater": {
+          "value": 0.0,
+          "unit": "m³/yr"
+        }
+      },
+      "output_value": 550000.0,
+      "output_unit": "m³/yr"
+    },
+    {
+      "step_id": "total_discharge",
+      "label": "Total Water Discharge",
+      "formula": "ocean + surface_water + subsurface_well + offsite_water_treatment + beneficial_other_users",
+      "inputs": {
+        "ocean": {
+          "value": 0.0,
+          "unit": "m³/yr"
+        },
+        "surface_water": {
+          "value": 100000.0,
+          "unit": "m³/yr"
+        },
+        "subsurface_well": {
+          "value": 0.0,
+          "unit": "m³/yr"
+        },
+        "offsite_water_treatment": {
+          "value": 0.0,
+          "unit": "m³/yr"
+        },
+        "beneficial_other_users": {
+          "value": 0.0,
+          "unit": "m³/yr"
+        }
+      },
+      "output_value": 100000.0,
+      "output_unit": "m³/yr"
+    },
+    {
+      "step_id": "kpi_1_consumption",
+      "label": "KPI 1 — Total Water Consumption",
+      "formula": "total_water_withdrawal_m3 - total_water_discharge_m3",
+      "inputs": {
+        "total_water_withdrawal_m3": {
+          "value": 550000.0,
+          "unit": "m³/yr"
+        },
+        "total_water_discharge_m3": {
+          "value": 100000.0,
+          "unit": "m³/yr"
+        }
+      },
+      "output_value": 450000.0,
+      "output_unit": "m³/yr"
+    },
+    {
+      "step_id": "freshwater_consumption",
+      "label": "Total Freshwater Consumption",
+      "formula": "total_water_consumption_m3 - harvested_rainwater_withdrawal_m3",
+      "inputs": {
+        "total_water_consumption_m3": {
+          "value": 450000.0,
+          "unit": "m³/yr"
+        },
+        "harvested_rainwater_withdrawal_m3": {
+          "value": 0.0,
+          "unit": "m³/yr"
+        }
+      },
+      "output_value": 450000.0,
+      "output_unit": "m³/yr"
+    },
+    {
+      "step_id": "kpi_2_intensity",
+      "label": "KPI 2 — Water Consumption Intensity",
+      "formula": "(total_water_consumption_m3 × 1000) / cementitious_production_t_yr",
+      "inputs": {
+        "total_water_consumption_m3": {
+          "value": 450000.0,
+          "unit": "m³/yr"
+        },
+        "conversion_factor_l_per_m3": {
+          "value": 1000.0,
+          "unit": "L/m³"
+        },
+        "cementitious_production_t_yr": {
+          "value": 2300000.0,
+          "unit": "t/yr"
+        }
+      },
+      "output_value": 195.65217391304347,
+      "output_unit": "L/t cementitious"
+    }
+  ]
+}
