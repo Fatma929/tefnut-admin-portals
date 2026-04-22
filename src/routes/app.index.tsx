@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Activity,
   ArrowRight,
+  Building2,
+  Database,
   Download,
   Droplets,
   FileText,
@@ -233,7 +235,7 @@ function DashboardPage() {
             {[
               { icon: Plus, label: "Add new data source", to: "/app/data" },
               { icon: FileText, label: "Generate CBAM report", to: "/app/reports" },
-              { icon: Building2 as never, label: "Register new site", to: "/app/sites" },
+              { icon: Building2, label: "Register new site", to: "/app/sites" },
               { icon: Download, label: "Export emissions ledger", to: "/app/emissions" },
             ].map((a) => (
               <Link
@@ -255,4 +257,4 @@ function DashboardPage() {
   );
 }
 
-import { Building2 } from "lucide-react";
+
