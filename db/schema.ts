@@ -286,3 +286,296 @@ export interface CBAMFxRate {
   rate_to_eur: string;            // NUMERIC returned as string by pg driver
   fetched_at_utc: string;         // ISO-8601 timestamptz
 }
+
+// ---------------------------------------------------------------------------
+// Enterprise Schema types (EU CBAM 2023/956 + Migration 0004)
+// Mirrors db/migrations/0004_enterprise_schema.sql
+// ---------------------------------------------------------------------------
+
+export type KilnType = "dry_kiln" | "wet_kiln" | "semi_dry_kiln" | "dry_kiln_ph_pc" | "vertical_shaft_kiln" | "other";
+export type PeriodType = "annual" | "quarterly" | "monthly";
+export type PeriodStatus = "open" | "locked" | "archived";
+export type RunStatus = "draft" | "submitted" | "under_review" | "approved" | "superseded";
+export type TransportMode = "road" | "rail" | "sea" | "air" | "pipeline" | "other";
+export type ScenarioType = "baseline" | "reduction_target" | "what_if" | "ai_recommendation";
+export type ProjectStatus = "proposed" | "approved" | "in_progress" | "completed" | "cancelled";
+export type ReportingStandard = "GHG Protocol" | "ISO 14064-1" | "GCCA" | "EU CBAM" | "CDP" | "GRI";
+
+/** Structured period registry — replaces scattered reporting_year integers */
+export interface ReportingPeriod {
+  id: string;
+  org_id: string;
+  facility_id: string;
+  period_label: string;       // e.g. '2026-Annual', '2026-Q1'
+  period_type: PeriodType;
+  year: number;
+  quarter: number | null;
+  start_date: string;
+  end_date: string;
+  status: PeriodStatus;
+  locked_at: string | null;
+  locked_by: string | null;
+  created_at: string;
+}
+
+/** Structured, queryable input snapshot per period + version */
+export interface PlantInputRecord {
+  id: string;
+  org_id: string;
+  facility_id: string;
+  period_id: string;
+  version_no: number;
+  status: RunStatus;
+  clinker_production_t: number | null;
+  cement_production_t: number;
+  raw_meal_t: number | null;
+  clinker_ratio: number | null;
+  operating_days: number | null;
+  calcination_method: string;
+  calcination_ef_kg_per_t: number | null;
+  data_completeness_pct: number;
+  data_quality_score: DataQualityScore;
+  input_sha256_hash: string;
+  created_by: string;
+  approved_by: string | null;
+  created_at: string;
+  approved_at: string | null;
+  notes: string | null;
+}
+
+/** Normalised fuel row linked to a PlantInputRecord */
+export interface FuelEntry {
+  id: string;
+  org_id: string;
+  plant_input_id: string;
+  fuel_type: string;
+  is_kiln_fuel: boolean;
+  consumption_t: number;
+  lhv_gj_per_t: number;
+  ef_kg_co2_per_gj: number | null;
+  ef_source: string | null;
+  biogenic_fraction: number;
+  supplier_name: string | null;
+  created_at: string;
+}
+
+/** Normalised electricity row */
+export interface ElectricityEntry {
+  id: string;
+  org_id: string;
+  plant_input_id: string;
+  purchased_mwh: number;
+  on_site_generated_mwh: number;
+  renewable_mwh: number;
+  grid_ef_kg_co2_per_mwh: number;
+  grid_ef_source: string;
+  created_at: string;
+}
+
+/** Normalised logistics row */
+export interface LogisticsEntry {
+  id: string;
+  org_id: string;
+  plant_input_id: string;
+  description: string;
+  direction: "inbound" | "outbound";
+  transport_mode: TransportMode;
+  freight_t_km: number;
+  ef_kg_co2_per_t_km: number;
+  created_at: string;
+}
+
+/** Normalised water row */
+export interface WaterEntry {
+  id: string;
+  org_id: string;
+  plant_input_id: string;
+  withdrawal_m3: number;
+  discharge_m3: number;
+  recycled_m3: number;
+  harvested_rain_m3: number;
+  water_source: string | null;
+  discharge_dest: string | null;
+  water_stress_index: number | null;
+  created_at: string;
+}
+
+/** Versioned calculation run registry */
+export interface CalculationRun {
+  id: string;
+  org_id: string;
+  facility_id: string;
+  period_id: string;
+  plant_input_id: string;
+  version_no: number;
+  status: RunStatus;
+  engine_version: string;
+  run_sha256: string;
+  created_by: string;
+  approved_by: string | null;
+  created_at: string;
+  approved_at: string | null;
+  notes: string | null;
+}
+
+/** Structured KPI outputs — queryable, not JSON blobs */
+export interface CalculationResult {
+  id: string;
+  org_id: string;
+  run_id: string;
+  scope1_total_t: number;
+  scope2_total_t: number;
+  scope3_total_t: number;
+  total_co2e_t: number;
+  biomass_co2_memo_t: number;
+  calcination_co2_t: number;
+  kiln_fuel_co2_t: number;
+  non_kiln_fuel_co2_t: number;
+  electricity_co2_t: number;
+  transport_co2_t: number;
+  kg_co2_per_t_cement: number | null;
+  kg_co2_per_t_clinker: number | null;
+  gj_per_t_clinker: number | null;
+  m3_water_per_t_product: number | null;
+  water_withdrawal_m3: number | null;
+  water_consumption_m3: number | null;
+  water_recycled_m3: number | null;
+  water_intensity_l_per_t: number | null;
+  kiln_energy_tj: number | null;
+  non_kiln_energy_tj: number | null;
+  cbam_see_t_per_t: number | null;
+  cbam_certificate_obligation: number | null;
+  cbam_net_payable_eur: number | null;
+  data_quality_score: DataQualityScore;
+  data_completeness_pct: number;
+  validation_warnings_json: string;   // JSON array
+  source_mix_json: string;            // JSON array
+  calculated_at: string;
+}
+
+/** Portfolio + reference benchmarks */
+export interface Benchmark {
+  id: string;
+  org_id: string;
+  facility_id: string | null;
+  period_id: string | null;
+  benchmark_type: "portfolio_avg" | "reference_factor" | "prior_year" | "industry_best" | "target";
+  metric: string;
+  value: number;
+  unit: string;
+  source: string | null;
+  valid_from: string | null;
+  valid_to: string | null;
+  created_at: string;
+}
+
+/** AI / what-if scenario run */
+export interface ScenarioRun {
+  id: string;
+  org_id: string;
+  facility_id: string;
+  base_run_id: string | null;
+  scenario_type: ScenarioType;
+  name: string;
+  description: string | null;
+  assumptions_json: string;
+  result_delta_json: string | null;
+  ai_model_version: string | null;
+  created_by: string;
+  created_at: string;
+}
+
+/** Decarbonisation project tracking */
+export interface ReductionProject {
+  id: string;
+  org_id: string;
+  facility_id: string | null;
+  name: string;
+  description: string | null;
+  status: ProjectStatus;
+  target_metric: string;
+  baseline_value: number | null;
+  target_value: number | null;
+  target_year: number | null;
+  estimated_reduction_t_co2e: number | null;
+  capex_estimate_usd: number | null;
+  linked_scenario_id: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Insert helpers
+export type NewReportingPeriod = Omit<ReportingPeriod, "id" | "created_at">;
+export type NewPlantInputRecord = Omit<PlantInputRecord, "id" | "created_at">;
+export type NewFuelEntry = Omit<FuelEntry, "id" | "created_at">;
+export type NewElectricityEntry = Omit<ElectricityEntry, "id" | "created_at">;
+export type NewLogisticsEntry = Omit<LogisticsEntry, "id" | "created_at">;
+export type NewWaterEntry = Omit<WaterEntry, "id" | "created_at">;
+export type NewCalculationRun = Omit<CalculationRun, "id" | "created_at">;
+export type NewCalculationResult = Omit<CalculationResult, "id" | "calculated_at">;
+export type NewBenchmark = Omit<Benchmark, "id" | "created_at">;
+export type NewScenarioRun = Omit<ScenarioRun, "id" | "created_at">;
+export type NewReductionProject = Omit<ReductionProject, "id" | "created_at" | "updated_at">;
+
+// ---------------------------------------------------------------------------
+// Emission Factors (Migration 0005)
+// ---------------------------------------------------------------------------
+
+export type EFSourceType =
+  | "gcca_default"
+  | "ipcc_efdb"
+  | "national_inventory"
+  | "peer_reviewed"
+  | "plant_specific"
+  | "operator_supplied"
+  | "regulatory"
+  | "other";
+
+/** Master emission factor record */
+export interface EmissionFactor {
+  id: string;
+  org_id: string | null;          // null = global default
+  facility_id: string | null;
+  factor_code: string;
+  category: string;               // fuel | electricity | cement_process | transport | water
+  subcategory: string;
+  fuel_type: string | null;
+  process_type: string | null;
+  geography: string | null;       // ISO country code or 'Global'
+  source_name: string;
+  source_type: EFSourceType;
+  source_file: string | null;
+  source_sheet: string | null;
+  reporting_year: number | null;
+  applicable_from: string | null;
+  applicable_to: string | null;
+  unit: string;
+  value: number;
+  value_min: number | null;
+  value_max: number | null;
+  confidence_score: number | null;
+  priority_rank: 1 | 2 | 3 | 4;
+  is_active: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Factor usage traceability — one row per metric per calculation run */
+export interface CalculationFactorUsage {
+  id: string;
+  org_id: string;
+  calculation_run_id: string;
+  factor_id: string | null;       // null if plant-supplied inline
+  metric_name: string;            // e.g. 'calcination_ef', 'coal_anthracite_ef'
+  selected_value: number;
+  selected_unit: string;
+  source_name: string;
+  priority_rank_used: number;
+  reason_selected: string;
+  created_at: string;
+}
+
+export type NewEmissionFactor = Omit<EmissionFactor, "id" | "created_at" | "updated_at">;
+export type NewCalculationFactorUsage = Omit<CalculationFactorUsage, "id" | "created_at">;

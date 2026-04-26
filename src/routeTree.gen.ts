@@ -20,6 +20,7 @@ import { Route as AppReportsRouteImport } from './routes/app.reports'
 import { Route as AppHistoryRouteImport } from './routes/app.history'
 import { Route as AppEmissionsRouteImport } from './routes/app.emissions'
 import { Route as AppDataRouteImport } from './routes/app.data'
+import { Route as ApiFactorsRouteImport } from './routes/api.factors'
 import { Route as AdminSecurityRouteImport } from './routes/admin.security'
 import { Route as AdminPlatformRouteImport } from './routes/admin.platform'
 import { Route as AdminComplianceRouteImport } from './routes/admin.compliance'
@@ -81,6 +82,11 @@ const AppDataRoute = AppDataRouteImport.update({
   path: '/data',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiFactorsRoute = ApiFactorsRouteImport.update({
+  id: '/api/factors',
+  path: '/api/factors',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminSecurityRoute = AdminSecurityRouteImport.update({
   id: '/security',
   path: '/security',
@@ -116,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/admin/compliance': typeof AdminComplianceRoute
   '/admin/platform': typeof AdminPlatformRoute
   '/admin/security': typeof AdminSecurityRoute
+  '/api/factors': typeof ApiFactorsRoute
   '/app/data': typeof AppDataRoute
   '/app/emissions': typeof AppEmissionsRoute
   '/app/history': typeof AppHistoryRoute
@@ -132,6 +139,7 @@ export interface FileRoutesByTo {
   '/admin/compliance': typeof AdminComplianceRoute
   '/admin/platform': typeof AdminPlatformRoute
   '/admin/security': typeof AdminSecurityRoute
+  '/api/factors': typeof ApiFactorsRoute
   '/app/data': typeof AppDataRoute
   '/app/emissions': typeof AppEmissionsRoute
   '/app/history': typeof AppHistoryRoute
@@ -151,6 +159,7 @@ export interface FileRoutesById {
   '/admin/compliance': typeof AdminComplianceRoute
   '/admin/platform': typeof AdminPlatformRoute
   '/admin/security': typeof AdminSecurityRoute
+  '/api/factors': typeof ApiFactorsRoute
   '/app/data': typeof AppDataRoute
   '/app/emissions': typeof AppEmissionsRoute
   '/app/history': typeof AppHistoryRoute
@@ -171,6 +180,7 @@ export interface FileRouteTypes {
     | '/admin/compliance'
     | '/admin/platform'
     | '/admin/security'
+    | '/api/factors'
     | '/app/data'
     | '/app/emissions'
     | '/app/history'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/admin/compliance'
     | '/admin/platform'
     | '/admin/security'
+    | '/api/factors'
     | '/app/data'
     | '/app/emissions'
     | '/app/history'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/admin/compliance'
     | '/admin/platform'
     | '/admin/security'
+    | '/api/factors'
     | '/app/data'
     | '/app/emissions'
     | '/app/history'
@@ -219,6 +231,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   AppRoute: typeof AppRouteWithChildren
+  ApiFactorsRoute: typeof ApiFactorsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -299,6 +312,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/data'
       preLoaderRoute: typeof AppDataRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/api/factors': {
+      id: '/api/factors'
+      path: '/api/factors'
+      fullPath: '/api/factors'
+      preLoaderRoute: typeof ApiFactorsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/admin/security': {
       id: '/admin/security'
@@ -384,6 +404,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   AppRoute: AppRouteWithChildren,
+  ApiFactorsRoute: ApiFactorsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

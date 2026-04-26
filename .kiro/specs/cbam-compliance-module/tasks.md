@@ -246,7 +246,7 @@ Implement the EU CBAM Compliance Module as a new Python engine (`cbam_engine.py`
 - [x] 14. Final checkpoint — Ensure all tests pass
   - Run `pytest cbam_engine/tests/ -v` to confirm all Python tests pass; verify TypeScript components have no type errors via `getDiagnostics`; ask the user if questions arise.
 
-- [-] 15. Git commit of all changes
+- [x] 15. Git commit of all changes
   - Stage all new and modified files: `cbam_engine/`, `db/migrations/0003_cbam_tables.sql`, `db/schema.ts`, `src/routes/api.cbam.calculate.ts`, `src/routes/api.cbam.declaration.ts`, `src/components/CBAMDeclarationButton.tsx`, `src/components/NetFinancialImpactCard.tsx`, `src/routes/app.index.tsx`
   - Commit with message: `feat(cbam): implement CBAM compliance module — EU Regulation 2023/956`
 
