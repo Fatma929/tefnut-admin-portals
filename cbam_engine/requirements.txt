@@ -1,15 +1,11 @@
-# carbon_engine — pinned production dependencies
+# cbam_engine — pinned production dependencies
 # Python 3.13+
+# EU CBAM Regulation 2023/956 compliance engine
 # Generated from: py -3.13 -m pip show <package>
-# Update with: pip install -r requirements.txt && pip freeze > requirements.lock
 
 # Core
 pydantic==2.13.3
 python-dateutil==2.9.0.post0
-
-# Data processing
-pandas==3.0.2
-openpyxl==3.1.5
 
 # AWS
 boto3==1.42.96

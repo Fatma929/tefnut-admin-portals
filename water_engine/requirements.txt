@@ -1,4 +1,4 @@
-# carbon_engine — pinned production dependencies
+# water_engine — pinned production dependencies
 # Python 3.13+
 # Generated from: py -3.13 -m pip show <package>
 # Update with: pip install -r requirements.txt && pip freeze > requirements.lock
