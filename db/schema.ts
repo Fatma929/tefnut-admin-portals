@@ -263,3 +263,26 @@ export type NewUploadedFile = Omit<UploadedFile, "id">;
 export type NewCarbonRecord = Omit<CarbonInventoryRecord, "id" | "calculated_at">;
 export type NewWaterRecord = Omit<WaterInventoryRecord, "id" | "calculated_at">;
 export type NewGeneratedReport = Omit<GeneratedReport, "id" | "generated_at">;
+
+// ---------------------------------------------------------------------------
+// CBAM support types (EU CBAM 2023/956)
+// Mirrors db/migrations/0003_cbam_tables.sql
+// ---------------------------------------------------------------------------
+
+/** Weekly EU ETS carbon price snapshot — cbam_ets_price_history */
+export interface CBAMEtsPriceHistory {
+  id: string;
+  week_start_date: string;        // ISO-8601 date
+  price_eur_per_t_co2e: string;   // NUMERIC returned as string by pg driver
+  source_url: string;
+  fetched_at_utc: string;         // ISO-8601 timestamptz
+}
+
+/** Daily FX rate to EUR — cbam_fx_rates */
+export interface CBAMFxRate {
+  id: string;
+  currency_code: string;          // CHAR(3), e.g. 'EGP', 'USD'
+  rate_date: string;              // ISO-8601 date
+  rate_to_eur: string;            // NUMERIC returned as string by pg driver
+  fetched_at_utc: string;         // ISO-8601 timestamptz
+}

@@ -447,7 +447,7 @@ class CarbonEngine:
 
         # --- Post-calc range validation ---
         range_result = validate_specific_co2_range(specific_co2_kg)
-        post_calc_warnings = [w.to_dict() for w in range_result.warnings]
+        post_calc_warnings = [w.model_dump() for w in range_result.warnings]
 
         # --- Energy ---
         energy_intensity = self._energy_intensity(kiln_energy_tj)
@@ -474,15 +474,15 @@ class CarbonEngine:
             plant_name=self.plant.plant_name,
             reporting_year=self.plant.reporting_year,
             scope1=ScopeBreakdown(
-                calcination_co2_t=round(calcination_co2, 2),
-                fuel_combustion_co2_t=round(total_fuel_fossil, 2),
-                biomass_co2_memo_t=round(total_biomass_memo, 2),
-                total_scope1_co2_t=round(total_scope1, 2),
+                calcination_co2_t=round(calcination_co2, 4),
+                fuel_combustion_co2_t=round(total_fuel_fossil, 4),
+                biomass_co2_memo_t=round(total_biomass_memo, 4),
+                total_scope1_co2_t=round(total_scope1, 4),
             ),
-            scope2=Scope2Result(electricity_co2_t=round(scope2_co2, 2)),
-            scope3=Scope3Result(transport_co2_t=round(scope3_co2, 2)),
-            total_co2e_t=round(total_co2e, 2),
-            specific_co2_kg_per_t_cement=round(specific_co2_kg, 2),
+            scope2=Scope2Result(electricity_co2_t=round(scope2_co2, 4)),
+            scope3=Scope3Result(transport_co2_t=round(scope3_co2, 4)),
+            total_co2e_t=round(total_co2e, 4),
+            specific_co2_kg_per_t_cement=round(specific_co2_kg, 4),
             energy=EnergyResult(
                 total_kiln_energy_tj=round(kiln_energy_tj, 4),
                 total_non_kiln_energy_tj=round(non_kiln_energy_tj, 4),

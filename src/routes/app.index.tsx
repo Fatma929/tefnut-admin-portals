@@ -37,6 +37,7 @@ import { CalculationStepsDrawer } from "@/components/CalculationStepsDrawer";
 import { ValidationWarningBanner } from "@/components/ValidationWarningBanner";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { WaterBreakdownPanel } from "@/components/WaterBreakdownPanel";
+import { NetFinancialImpactCard, type CBAMResultType } from "@/components/NetFinancialImpactCard";
 import type { CarbonResult, WaterResult } from "@/lib/engine-types";
 import { cn } from "@/lib/utils";
 
@@ -242,12 +243,14 @@ declare global {
   interface Window {
     __tefnutSetCarbon?: (r: CarbonResult) => void;
     __tefnutSetWater?: (r: WaterResult) => void;
+    __tefnutSetCbam?: (r: CBAMResultType) => void;
   }
 }
 
 function DashboardPage() {
   const [carbonResult, setCarbonResult] = useState<CarbonResult>(mockCarbonResult);
   const [waterResult, setWaterResult] = useState<WaterResult>(mockWaterResult);
+  const [cbamResult, setCbamResult] = useState<CBAMResultType | null>(null);
   const [copiedAuditId, setCopiedAuditId] = useState<string | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
   const [reportToast, setReportToast] = useState(false);
@@ -256,6 +259,7 @@ function DashboardPage() {
   // Expose cross-page state setters on window
   window.__tefnutSetCarbon = setCarbonResult;
   window.__tefnutSetWater = setWaterResult;
+  window.__tefnutSetCbam = setCbamResult;
 
   function copyAuditId(hash: string) {
     navigator.clipboard.writeText(hash).then(() => {
@@ -451,6 +455,9 @@ function DashboardPage() {
           icon={Building2}
         />
       </div>
+
+      {/* CBAM Net Financial Impact */}
+      <NetFinancialImpactCard cbamResult={cbamResult} userRole="analyst" />
 
       {/* Charts row */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
