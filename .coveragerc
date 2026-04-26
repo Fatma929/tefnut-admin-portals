@@ -1,0 +1,16 @@
+[run]
+branch = True
+
+[report]
+# Exclude files that are infrastructure/CLI/template generators — not unit-testable
+omit =
+    */tests/*
+    */generate_template.py
+    */generate_sample.py
+    */handler.py
+    */__pycache__/*
+    */.venv/*
+
+# Minimum per-file coverage to flag (informational only — threshold set via --cov-fail-under)
+show_missing = True
+skip_covered = False

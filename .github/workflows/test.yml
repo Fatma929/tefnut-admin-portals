@@ -1,0 +1,177 @@
+name: Python CI
+
+on:
+  push:
+    branches: ["main", "develop"]
+    paths:
+      - "carbon_engine/**"
+      - "water_engine/**"
+      - "cbam_engine/**"
+      - ".github/workflows/test.yml"
+  pull_request:
+    branches: ["main", "develop"]
+    paths:
+      - "carbon_engine/**"
+      - "water_engine/**"
+      - "cbam_engine/**"
+      - ".github/workflows/test.yml"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Lint — Flake8
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint (flake8)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install flake8
+        run: pip install flake8==7.3.0
+
+      - name: Run flake8 — carbon_engine
+        run: flake8 carbon_engine/ --max-line-length=120 --exclude=__pycache__
+
+      - name: Run flake8 — water_engine
+        run: flake8 water_engine/ --max-line-length=120 --exclude=__pycache__
+
+      - name: Run flake8 — cbam_engine
+        run: flake8 cbam_engine/ --max-line-length=120 --exclude=__pycache__
+
+  # ---------------------------------------------------------------------------
+  # 2. Format — Black
+  # ---------------------------------------------------------------------------
+  format:
+    name: Format (black)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install black
+        run: pip install black==26.3.1
+
+      - name: Check formatting — carbon_engine
+        run: black --check --line-length 120 carbon_engine/
+
+      - name: Check formatting — water_engine
+        run: black --check --line-length 120 water_engine/
+
+      - name: Check formatting — cbam_engine
+        run: black --check --line-length 120 cbam_engine/
+
+  # ---------------------------------------------------------------------------
+  # 3. Type check — mypy
+  # ---------------------------------------------------------------------------
+  typecheck:
+    name: Type check (mypy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install \
+            pydantic==2.13.3 \
+            mypy==1.20.2 \
+            pandas-stubs \
+            boto3-stubs \
+            python-dateutil==2.9.0.post0 \
+            pandas==3.0.2 \
+            openpyxl==3.1.5
+
+      - name: Run mypy — carbon_engine
+        run: mypy carbon_engine/ --ignore-missing-imports --no-strict-optional
+
+      - name: Run mypy — water_engine
+        run: mypy water_engine/ --ignore-missing-imports --no-strict-optional
+
+      - name: Run mypy — cbam_engine
+        run: mypy cbam_engine/ --ignore-missing-imports --no-strict-optional
+
+  # ---------------------------------------------------------------------------
+  # 4. Test + Coverage — pytest matrix (3.9 → 3.12)
+  # ---------------------------------------------------------------------------
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install carbon_engine dependencies
+        run: pip install -r carbon_engine/requirements.txt
+
+      - name: Install water_engine dependencies
+        run: pip install -r water_engine/requirements.txt
+
+      - name: Install cbam_engine dependencies
+        run: pip install -r cbam_engine/requirements.txt
+
+      # ── carbon_engine tests + coverage ──
+      - name: Test carbon_engine
+        run: |
+          pytest carbon_engine/tests/ \
+            --cov=carbon_engine \
+            --cov-config=.coveragerc \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage-carbon.xml \
+            --cov-fail-under=75 \
+            -v
+          # Target: raise to 95% as validators.py test coverage improves
+
+      # ── water_engine tests + coverage ──
+      - name: Test water_engine
+        run: |
+          pytest water_engine/tests/ \
+            --cov=water_engine \
+            --cov-config=.coveragerc \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage-water.xml \
+            --cov-fail-under=70 \
+            -v
+          # Target: raise to 95% as water_engine.py edge-case coverage improves
+
+      # ── cbam_engine tests + coverage ──
+      - name: Test cbam_engine
+        run: |
+          pytest cbam_engine/tests/ \
+            --cov=cbam_engine \
+            --cov-config=.coveragerc \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage-cbam.xml \
+            --cov-fail-under=45 \
+            -v
+          # Target: raise to 80% once currency_conversion.py and weekly_price_sync.py are mocked
+
+      # ── Upload coverage to Codecov (optional, non-blocking) ──
+      - name: Upload coverage reports
+        if: matrix.python-version == '3.12'
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage-carbon.xml,coverage-water.xml,coverage-cbam.xml
+          fail_ci_if_error: false
+        continue-on-error: true

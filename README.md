@@ -1,5 +1,7 @@
 # Tefnut — Enterprise ISO Sustainability Platform
 
+[![Python CI](https://github.com/Fatma929/tefnut-admin-portals/actions/workflows/test.yml/badge.svg)](https://github.com/Fatma929/tefnut-admin-portals/actions/workflows/test.yml)
+
 Tefnut is an enterprise-grade sustainability reporting platform for the cement and building materials industry. It provides ISO-compliant carbon and water KPI calculations with a full cryptographic audit trail.
 
 ## Standards Supported
@@ -71,8 +73,13 @@ npm run format
 ```bash
 cd carbon_engine
 pip install -r requirements.txt
-python -m pytest tests/
+python -m pytest tests/ --cov=carbon_engine --cov-config=../.coveragerc
 
 cd ../water_engine
-python -m pytest tests/
+pip install -r requirements.txt
+python -m pytest tests/ --cov=water_engine --cov-config=../.coveragerc
+
+cd ../cbam_engine
+pip install -r requirements.txt
+python -m pytest tests/ --cov=cbam_engine --cov-config=../.coveragerc
 ```
