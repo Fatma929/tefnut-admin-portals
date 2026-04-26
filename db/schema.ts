@@ -579,3 +579,122 @@ export interface CalculationFactorUsage {
 
 export type NewEmissionFactor = Omit<EmissionFactor, "id" | "created_at" | "updated_at">;
 export type NewCalculationFactorUsage = Omit<CalculationFactorUsage, "id" | "created_at">;
+
+// ---------------------------------------------------------------------------
+// Client Master Data (Migration 0006)
+// ---------------------------------------------------------------------------
+
+export type CompanySize = "micro" | "small" | "medium" | "large" | "enterprise";
+export type ImportStatus = "pending" | "processing" | "completed" | "failed" | "partial";
+export type PlantTypeDetail = "integrated" | "grinding_only" | "clinker_only" | "white_cement" | "other";
+
+/** Enriched company profile — 1:1 with organizations */
+export interface Company {
+  id: string;
+  org_id: string;
+  company_name: string;
+  company_size: CompanySize | null;
+  industry: string;
+  sub_industry: string | null;
+  country: string;
+  city: string | null;
+  website: string | null;
+  currency: string;
+  fiscal_year_start: number;
+  export_to_eu: boolean;
+  eori_number: string | null;
+  reporting_standard: ReportingStandard;
+  employee_count: number | null;
+  source_file: string | null;
+  source_row: number | null;
+  import_batch_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Enriched plant profile — 1:1 with facilities */
+export interface Plant {
+  id: string;
+  facility_id: string;
+  org_id: string;
+  plant_name: string;
+  plant_type: PlantTypeDetail;
+  country: string;
+  city: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  plant_capacity_t_yr: number | null;
+  clinker_capacity_t_yr: number | null;
+  production_lines: number | null;
+  kiln_type: KilnType | null;
+  commissioning_year: number | null;
+  source_file: string | null;
+  source_row: number | null;
+  import_batch_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Per-company per-year reporting configuration */
+export interface ReportingProfile {
+  id: string;
+  org_id: string;
+  company_id: string;
+  reporting_year: number;
+  includes_carbon: boolean;
+  includes_water: boolean;
+  includes_cbam: boolean;
+  reporting_standard: string;
+  gwp_reference: GwpReference;
+  base_year: number | null;
+  status: "active" | "locked" | "archived";
+  locked_at: string | null;
+  locked_by: string | null;
+  carbon_report_id: string | null;
+  water_report_id: string | null;
+  cbam_report_id: string | null;
+  source_file: string | null;
+  import_batch_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Contact person for a company */
+export interface ClientContact {
+  id: string;
+  org_id: string;
+  company_id: string;
+  contact_name: string;
+  contact_email: string | null;
+  contact_phone: string | null;
+  role: string | null;
+  is_primary: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Audit trail for every Excel/CSV import batch */
+export interface ClientImportLog {
+  id: string;
+  org_id: string | null;
+  filename: string;
+  file_sha256: string;
+  status: ImportStatus;
+  total_rows: number;
+  imported_companies: number;
+  imported_plants: number;
+  updated_companies: number;
+  updated_plants: number;
+  skipped_rows: number;
+  failed_rows: number;
+  errors_json: string;
+  warnings_json: string;
+  imported_by: string | null;
+  started_at: string;
+  completed_at: string | null;
+}
+
+export type NewCompany = Omit<Company, "id" | "created_at" | "updated_at">;
+export type NewPlant = Omit<Plant, "id" | "created_at" | "updated_at">;
+export type NewReportingProfile = Omit<ReportingProfile, "id" | "created_at" | "updated_at">;
+export type NewClientContact = Omit<ClientContact, "id" | "created_at" | "updated_at">;
