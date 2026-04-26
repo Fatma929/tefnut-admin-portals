@@ -39,7 +39,7 @@ function getPool(): Pool {
       connectionTimeoutMillis: 5_000,
       ssl: { rejectUnauthorized: true }, // RDS requires SSL
     });
-    _pool.on("error", (err) => {
+    _pool.on("error", (err: Error) => {
       console.error("[pg-pool] Unexpected error on idle client:", err);
     });
   }
@@ -50,15 +50,15 @@ function getPool(): Pool {
 // Typed query helper
 // ---------------------------------------------------------------------------
 export interface TenantDb {
-  query<T extends Record<string, unknown>>(
+  query<T extends object>(
     sql: string,
     params?: unknown[],
   ): Promise<QueryResult<T>>;
-  queryOne<T extends Record<string, unknown>>(
+  queryOne<T extends object>(
     sql: string,
     params?: unknown[],
   ): Promise<T | null>;
-  queryMany<T extends Record<string, unknown>>(
+  queryMany<T extends object>(
     sql: string,
     params?: unknown[],
   ): Promise<T[]>;
@@ -85,14 +85,14 @@ export async function withTenant<T>(
     await client.query("SET LOCAL app.current_org_id = $1", [orgId]);
 
     const db: TenantDb = {
-      async query<T extends Record<string, unknown>>(sql: string, params?: unknown[]) {
+      async query<T extends object>(sql: string, params?: unknown[]) {
         return client.query<T>(sql, params);
       },
-      async queryOne<T extends Record<string, unknown>>(sql: string, params?: unknown[]) {
+      async queryOne<T extends object>(sql: string, params?: unknown[]) {
         const result = await client.query<T>(sql, params);
-        return result.rows[0] ?? null;
+        return (result.rows[0] ?? null) as T | null;
       },
-      async queryMany<T extends Record<string, unknown>>(sql: string, params?: unknown[]) {
+      async queryMany<T extends object>(sql: string, params?: unknown[]) {
         const result = await client.query<T>(sql, params);
         return result.rows;
       },
