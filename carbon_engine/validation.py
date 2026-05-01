@@ -153,6 +153,7 @@ class ValidationResult(BaseModel):
             }
         return {
             "status": "OK",
+            "errors": [],   # always present for frontend consistency
             "warnings": [w.model_dump() for w in self.warnings],
         }
 

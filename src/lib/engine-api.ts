@@ -10,6 +10,7 @@ async function post<T>(path: string, body: unknown): Promise<EngineResponse<T>> 
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(body),
   });
 
@@ -37,7 +38,7 @@ async function uploadFile<T>(path: string, file: File, timestampUtc: string): Pr
   form.append("file", file);
   form.append("timestamp_utc", timestampUtc);
 
-  const res = await fetch(`${BASE}${path}`, { method: "POST", body: form });
+  const res = await fetch(`${BASE}${path}`, { method: "POST", body: form, credentials: "include" });
 
   if (!res.ok) {
     const detail = await res.json().catch(() => ({}));
@@ -67,7 +68,6 @@ export const engineApi = {
   uploadWater: (file: File, timestampUtc: string) =>
     uploadFile<WaterResult>("/api/water/upload", file, timestampUtc),
 };
-
 // ---------------------------------------------------------------------------
 // Persistence API — save results to D1 after calculation
 // ---------------------------------------------------------------------------

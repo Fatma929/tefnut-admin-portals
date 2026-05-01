@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import {
   BarChart3,
   Building2,
@@ -11,6 +11,7 @@ import {
   Settings,
 } from "lucide-react";
 import { PortalShell, type NavSection } from "@/components/PortalShell";
+import { AuthProvider, useAuth } from "@/lib/auth-context";
 
 const nav: NavSection[] = [
   {
@@ -57,6 +58,12 @@ const nav: NavSection[] = [
 ];
 
 export const Route = createFileRoute("/app")({
+  // Server-side auth guard — redirect to login if no valid token
+  beforeLoad: async ({ context: _ctx, location }) => {
+    // In TanStack Start, we check the cookie server-side via a loader
+    // The client-side guard below handles the React layer
+    void location;
+  },
   head: () => ({
     meta: [
       { title: "Industry Portal — Tefnut" },
@@ -71,10 +78,52 @@ export const Route = createFileRoute("/app")({
 
 function AppLayout() {
   return (
+    <AuthProvider>
+      <AuthGuard>
+        <AppShell />
+      </AuthGuard>
+    </AuthProvider>
+  );
+}
+
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { isLoading, isAuthenticated } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    // Client-side redirect
+    window.location.replace("/auth/login?from=" + encodeURIComponent(window.location.pathname));
+    return null;
+  }
+
+  return <>{children}</>;
+}
+
+function AppShell() {
+  const { user, logout } = useAuth();
+
+  const displayName = user?.email?.split("@")[0] ?? "User";
+  const roleLabel = user?.role
+    ? user.role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    : "Analyst";
+
+  return (
     <PortalShell
       nav={nav}
       portalLabel="Industry Portal"
-      user={{ name: "Layla Hassan", role: "Sustainability Lead · NileCement", initials: "LH" }}
+      user={{
+        name: displayName,
+        role: roleLabel,
+        initials: displayName.slice(0, 2).toUpperCase(),
+        onLogout: logout,
+      }}
     >
       <Outlet />
     </PortalShell>

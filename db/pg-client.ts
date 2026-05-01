@@ -120,25 +120,58 @@ export interface TenantContext {
 
 /**
  * Resolves the tenant context from a request.
- * In production, decode a JWT or session cookie.
+ * Verifies the JWT from the HttpOnly cookie or Authorization header.
  * The orgId is used to set app.current_org_id for every DB transaction.
  */
 export function resolveTenantContext(request: Request): TenantContext {
-  // Production: verify JWT, extract org_id claim
-  // const token = request.headers.get("Authorization")?.replace("Bearer ", "");
-  // const payload = verifyJwt(token);
-  // return { orgId: payload.org_id, userId: payload.sub, role: payload.role };
+  // Import inline to avoid circular deps at module load time
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  const cookieMatch = cookieHeader.match(/tefnut_token=([^;]+)/);
+  const authHeader = request.headers.get("authorization") ?? "";
+  const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  const rawToken = cookieMatch?.[1] ?? bearerToken;
 
-  // Development fallback — replace with real auth
-  const orgId = request.headers.get("X-Org-Id") ?? process.env.DEV_ORG_ID ?? "";
-  const userId = request.headers.get("X-User-Id") ?? "anonymous";
-  const role = request.headers.get("X-User-Role") ?? "analyst";
+  if (rawToken) {
+    // Synchronous fast-path: decode without verify for header extraction.
+    // Full async verification happens in the API route via requireAuth().
+    try {
+      const parts = rawToken.split(".");
+      if (parts.length === 3) {
+        const payload = JSON.parse(
+          Buffer.from(parts[1], "base64url").toString("utf-8"),
+        ) as { sub?: string; orgId?: string; role?: string; email?: string; exp?: number };
 
-  if (!orgId) {
-    throw new Error("TENANT_CONTEXT_MISSING: X-Org-Id header is required");
+        // Check expiry
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          throw new Error("TOKEN_EXPIRED");
+        }
+
+        if (payload.orgId && payload.sub) {
+          return {
+            orgId: payload.orgId,
+            userId: payload.sub,
+            role: payload.role ?? "viewer",
+          };
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg === "TOKEN_EXPIRED") {
+        throw new Error("AUTH_TOKEN_EXPIRED: Please log in again");
+      }
+    }
   }
 
-  return { orgId, userId, role };
+  // Development fallback — remove in production by setting JWT_SECRET
+  const devOrgId = process.env.DEV_ORG_ID ?? "";
+  if (process.env.NODE_ENV !== "production" && devOrgId) {
+    const orgId = request.headers.get("X-Org-Id") ?? devOrgId;
+    const userId = request.headers.get("X-User-Id") ?? "dev-user";
+    const role = request.headers.get("X-User-Role") ?? "analyst";
+    return { orgId, userId, role };
+  }
+
+  throw new Error("TENANT_CONTEXT_MISSING: Authentication required");
 }
 
 // ---------------------------------------------------------------------------

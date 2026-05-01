@@ -27,7 +27,7 @@ interface PortalShellProps {
   /** Flat list (legacy) or sectioned nav */
   nav: NavItem[] | NavSection[];
   portalLabel: string;
-  user: { name: string; role: string; initials: string };
+  user: { name: string; role: string; initials: string; onLogout?: () => void };
   children: ReactNode;
 }
 
@@ -176,7 +176,10 @@ export function PortalShell({ nav, portalLabel, user, children }: PortalShellPro
               <Bell className="h-4 w-4" />
               <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-destructive" />
             </button>
-            <button className="flex items-center gap-2 rounded-lg border border-border bg-card px-2 py-1.5 text-sm shadow-soft hover:bg-muted">
+            <button className="flex items-center gap-2 rounded-lg border border-border bg-card px-2 py-1.5 text-sm shadow-soft hover:bg-muted"
+              onClick={user.onLogout}
+              title={user.onLogout ? "Sign out" : undefined}
+            >
               <Avatar className="h-7 w-7">
                 <AvatarFallback className="bg-brand text-brand-foreground text-[10px] font-semibold">
                   {user.initials}

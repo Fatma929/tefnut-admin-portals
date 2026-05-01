@@ -14,6 +14,7 @@
  */
 import { useRef, useState } from "react";
 import { engineApi, persistResult } from "@/lib/engine-api";
+import { useAuth } from "@/lib/auth-context";
 import type { CarbonResult, ValidationDetail, WaterResult } from "@/lib/engine-types";
 
 export type EngineType = "carbon" | "water";
@@ -42,6 +43,7 @@ async function hashFile(file: File): Promise<string> {
 
 export function useEngineUpload<T extends UploadResult>(engine: EngineType) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
 
   const [state, setState] = useState<UploadState<T>>({
     status: "idle",
@@ -129,7 +131,7 @@ export function useEngineUpload<T extends UploadResult>(engine: EngineType) {
           fileHash,
           fileName: file.name,
           fileSize: file.size,
-          facilityId: "default", // replace with real facilityId from auth context
+          facilityId: user?.facilityId ?? "default",
         }).catch((err) => console.warn("[persist] D1 save failed:", err));
       }
 

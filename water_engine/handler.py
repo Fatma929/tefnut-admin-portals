@@ -1,19 +1,17 @@
 """
-AWS Lambda handler for the Tefnut Carbon Engine.
+AWS Lambda handler for the Tefnut Water Engine.
 
 Supported routes (via API Gateway):
-  POST /api/calculate          — JSON body matching PlantInput
-  POST /api/calculate/upload   — multipart/form-data OR base64-encoded file body
+  POST /api/water/upload   — multipart/form-data OR base64-encoded file body
 
 Response envelope (all routes):
-  { "result": <CalculationResult | null>, "validation": { "status", "errors", "warnings" } }
+  { "result": <WaterResult | null>, "validation": { "status", "errors", "warnings" } }
 
 File upload detection:
   - If Content-Type contains 'multipart/form-data', the file is extracted from
     the first part whose name is 'file'.
-  - If Content-Type is 'application/octet-stream' or 'text/csv', the raw body
-    is treated as the file. The filename must be passed in the
-    X-Filename header (e.g. "plant_data.xlsx").
+  - Otherwise the raw body is treated as the file. The filename must be passed
+    in the X-Filename header (e.g. "water_data.xlsx").
   - If the body is a base64-encoded string (isBase64Encoded=True in the event),
     it is decoded automatically by API Gateway before reaching this handler.
 
@@ -21,6 +19,14 @@ Request headers consumed:
   X-Filename        — original filename for upload audit trail
   X-Timestamp-Utc   — ISO-8601 UTC timestamp of the upload (injected by proxy)
   X-User-Id         — authenticated user ID (injected by proxy)
+
+Column mapping (Excel/CSV → WaterInput):
+  Withdrawal:  surface_water, groundwater, quarry_water_used,
+               municipal_potable_water, external_wastewater, harvested_rainwater
+  Discharge:   ocean, discharge_surface_water, subsurface_well,
+               offsite_water_treatment, beneficial_other_users
+  Ancillary:   quarry_water_not_used_m3_yr, recycled_water_m3_yr,
+               storm_water_collected_discharged_m3_yr, cementitious_production_t_yr
 """
 
 from __future__ import annotations
@@ -33,10 +39,13 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from pydantic import ValidationError
-
-from carbon_engine import CarbonEngine, PlantInput
-from carbon_engine.parser import TemplateParseError, parse_file
+from water_engine.water_engine import (
+    AuditContext,
+    WaterDischarge,
+    WaterEngine,
+    WaterInput,
+    WaterWithdrawal,
+)
 from carbon_engine.validation import ValidationResult, WarningDetail
 
 logger = logging.getLogger()
@@ -91,46 +100,70 @@ def _utc_now() -> str:
 
 
 # ---------------------------------------------------------------------------
-# Route: POST /api/calculate  (JSON body)
+# File parsing
 # ---------------------------------------------------------------------------
-def _handle_json(event: dict) -> dict:
-    body = event.get("body", "{}")
-    if isinstance(body, str):
-        try:
-            body = json.loads(body)
-        except json.JSONDecodeError as exc:
-            return _err(400, "Invalid JSON body", str(exc))
+def _parse_water_input_from_file(
+    file_bytes: bytes, filename: str
+) -> tuple[dict, WaterInput]:
+    """
+    Parse an Excel or CSV file into a (raw_dict, WaterInput) pair.
 
-    timestamp_utc = _extract_header(event, "x-timestamp-utc") or _utc_now()
-    user_id = _extract_header(event, "x-user-id") or "anonymous"
+    raw_dict is passed to WaterEngine.validate_input() so the full validation
+    pipeline runs on the original data before the typed model is constructed.
+    """
+    import io as _io
 
-    # 1. Pre-calculation validation
-    validation = CarbonEngine.validate_input(body, timestamp_utc)
-    if validation.is_blocked:
-        logger.warning("JSON validation blocked: %d errors", len(validation.errors))
-        return _ok(_engine_response(None, validation))
+    import pandas as pd
 
-    # 2. Construct typed model and calculate
-    try:
-        plant_input = PlantInput.model_validate(body)
-    except ValidationError as exc:
-        logger.warning("JSON model validation error: %s", exc)
-        return _err(422, "Validation failed", exc.errors())
+    buf = _io.BytesIO(file_bytes)
+    if filename.lower().endswith((".xlsx", ".xls")):
+        df = pd.read_excel(buf)
+    else:
+        df = pd.read_csv(buf)
 
-    result = CarbonEngine(plant_input).calculate()
+    row = df.iloc[0].to_dict()
 
-    # 3. Merge post-calc warnings into the validation envelope
-    for w in result.validation_warnings:
-        if isinstance(w, dict):
-            validation.warnings.append(WarningDetail(**w))
-        else:
-            validation.warnings.append(w)
+    def g(k: str, default: float = 0.0) -> float:
+        val = row.get(k, default)
+        if val is None or (isinstance(val, float) and __import__("math").isnan(val)):
+            return default
+        return float(val)
 
-    return _ok(_engine_response(json.loads(result.model_dump_json()), validation))
+    raw_dict: dict = {
+        "withdrawal": {
+            "surface_water": g("surface_water"),
+            "groundwater": g("groundwater"),
+            "quarry_water_used": g("quarry_water_used"),
+            "municipal_potable_water": g("municipal_potable_water"),
+            "external_wastewater": g("external_wastewater"),
+            "harvested_rainwater": g("harvested_rainwater"),
+        },
+        "discharge": {
+            "ocean": g("ocean"),
+            "surface_water": g("discharge_surface_water"),
+            "subsurface_well": g("subsurface_well"),
+            "offsite_water_treatment": g("offsite_water_treatment"),
+            "beneficial_other_users": g("beneficial_other_users"),
+        },
+        "quarry_water_not_used_m3_yr": g("quarry_water_not_used_m3_yr"),
+        "recycled_water_m3_yr": g("recycled_water_m3_yr"),
+        "storm_water_collected_discharged_m3_yr": g("storm_water_collected_discharged_m3_yr"),
+        "cementitious_production_t_yr": g("cementitious_production_t_yr", 1.0),
+    }
+
+    water_input = WaterInput(
+        withdrawal=WaterWithdrawal(**raw_dict["withdrawal"]),
+        discharge=WaterDischarge(**raw_dict["discharge"]),
+        quarry_water_not_used_m3_yr=raw_dict["quarry_water_not_used_m3_yr"],
+        recycled_water_m3_yr=raw_dict["recycled_water_m3_yr"],
+        storm_water_collected_discharged_m3_yr=raw_dict["storm_water_collected_discharged_m3_yr"],
+        cementitious_production_t_yr=raw_dict["cementitious_production_t_yr"],
+    )
+    return raw_dict, water_input
 
 
 # ---------------------------------------------------------------------------
-# Route: POST /api/calculate/upload  (file upload)
+# Route: POST /api/water/upload  (file upload)
 # ---------------------------------------------------------------------------
 def _extract_file_from_multipart(
     body_bytes: bytes, content_type: str
@@ -189,33 +222,39 @@ def _handle_upload(event: dict) -> dict:
     if not file_bytes:
         return _err(400, "Uploaded file is empty")
 
-    logger.info("Processing upload: filename=%s size=%d bytes user=%s", filename, len(file_bytes), user_id)
+    logger.info(
+        "Processing water upload: filename=%s size=%d bytes user=%s",
+        filename,
+        len(file_bytes),
+        user_id,
+    )
 
-    # Parse file → PlantInput
+    # Parse file → (raw_dict, WaterInput)
     try:
-        plant_input = parse_file(file_bytes, filename)
-    except TemplateParseError as exc:
-        logger.warning("Template parse error: %s", exc)
-        return _err(422, "Template parse failed", [e.to_dict() for e in exc.errors])
+        raw_dict, water_input = _parse_water_input_from_file(file_bytes, filename)
     except Exception as exc:
-        logger.exception("Unexpected parse error: %s", exc)
-        return _err(500, "File parsing failed", str(exc))
+        logger.exception("File parse error: %s", exc)
+        return _err(422, "File parsing failed", str(exc))
 
-    # 1. Pre-calculation validation on the raw dict
-    raw_dict = json.loads(plant_input.model_dump_json())
-    validation = CarbonEngine.validate_input(raw_dict, timestamp_utc)
+    # 1. Pre-calculation validation
+    validation = WaterEngine.validate_input(raw_dict, timestamp_utc)
     if validation.is_blocked:
-        logger.warning("Upload validation blocked: %d errors", len(validation.errors))
+        logger.warning("Water upload validation blocked: %d errors", len(validation.errors))
         return _ok(_engine_response(None, validation))
 
-    # 2. Run calculation
+    # 2. Build AuditContext and run calculation
+    audit_ctx = AuditContext(
+        source_filename=filename,
+        upload_timestamp_utc=timestamp_utc,
+        user_id=user_id,
+    )
     try:
-        result = CarbonEngine(plant_input).calculate()
+        result = WaterEngine(water_input, audit_ctx).calculate()
     except Exception as exc:
-        logger.exception("Calculation error: %s", exc)
+        logger.exception("Water calculation error: %s", exc)
         return _err(500, "Calculation failed", str(exc))
 
-    # 3. Merge post-calc warnings
+    # 3. Merge post-calc warnings into the validation envelope
     for w in result.validation_warnings:
         if isinstance(w, dict):
             validation.warnings.append(WarningDetail(**w))
@@ -230,19 +269,13 @@ def _handle_upload(event: dict) -> dict:
 # ---------------------------------------------------------------------------
 def lambda_handler(event: dict, context: object) -> dict:
     """
-    Routes:
-      POST /api/calculate          → JSON body
-      POST /api/calculate/upload   → file upload
+    Entry point for the Water Engine Lambda function.
+    All requests are routed to _handle_upload regardless of path.
     """
     try:
         path: str = event.get("path", "") or event.get("rawPath", "")
-        logger.info("Request path: %s", path)
-
-        if path.rstrip("/").endswith("upload"):
-            return _handle_upload(event)
-
-        return _handle_json(event)
-
+        logger.info("Water handler request path: %s", path)
+        return _handle_upload(event)
     except Exception as exc:
         logger.exception("Unhandled error: %s", exc)
         return _err(500, "Internal server error")
